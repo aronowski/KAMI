@@ -1,0 +1,86 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build pine bindings then publish KAMI (CI entry point)
+    cmds:
+      - task: deps
+      - task: publish
+
+  deps:
+    desc: Build pine C bindings for the current platform
+    cmds:
+      - task: _deps:linux
+      - task: _deps:windows
+
+  publish:
+    desc: Publish KAMI for the current platform
+    cmds:
+      - task: _publish:linux
+      - task: _publish:windows
+
+  # Linux: both tasks run inside Docker so the only requirement is Docker itself.
+
+  _deps:linux:
+    platforms: [linux, darwin]
+    internal: true
+    cmds:
+      - task: _run
+        vars:
+          IMAGE: debian:bookworm
+          VOLUMES: '{{.ROOT_DIR}}/pine:/pine,{{.ROOT_DIR}}/KAMI.Core:/out'
+          WORKDIR: /pine/bindings/c
+          COMMAND: >-
+            apt-get update -qq &&
+            apt-get install -y -qq g++ meson ninja-build &&
+            rm -rf build &&
+            meson setup build &&
+            meson compile -C build &&
+            cp build/libpine_c.so /out/
+
+  _publish:linux:
+    platforms: [linux, darwin]
+    internal: true
+    cmds:
+      - task: _run
+        vars:
+          IMAGE: mcr.microsoft.com/dotnet/sdk:10.0
+          VOLUMES: '{{.ROOT_DIR}}:/work'
+          WORKDIR: /work
+          COMMAND: >-
+            dotnet publish /p:DebugType=None /p:DebugSymbols=false
+            KAMI.Linux/KAMI.Linux.csproj -c Release -o bin/publish/
+
+  # Windows: Python (pip), MSVC (via --vsenv), .NET 10 SDK.
+
+  _deps:windows:
+    platforms: [windows]
+    internal: true
+    dir: pine/bindings/c
+    cmds:
+      - python -m pip install meson ninja
+      - meson setup build --vsenv
+      - meson compile -C build
+      - cp build/pine_c.dll ../../../KAMI.Core/pine_c.dll
+
+  _publish:windows:
+    platforms: [windows]
+    internal: true
+    cmds:
+      - dotnet publish /p:DebugType=None /p:DebugSymbols=false "KAMI.Windows/KAMI.Windows.csproj" -c Release -o bin/publish/
+
+  # Internal Docker runner (Linux/macOS only)
+
+  _run:
+    internal: true
+    cmds:
+      - |
+        MOUNT_ARGS=""
+        for vol in $(echo "{{.VOLUMES}}" | tr ',' '\n'); do
+          MOUNT_ARGS="$MOUNT_ARGS -v $vol:z"
+        done
+        docker run --rm \
+          {{if .WORKDIR}}-w {{.WORKDIR}}{{end}} \
+          $MOUNT_ARGS \
+          {{.IMAGE}} \
+          sh -c "{{.COMMAND}}"

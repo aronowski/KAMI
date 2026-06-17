@@ -1,8 +1,11 @@
-﻿using KAMI.Core.Common;
+using KAMI.Core.Common;
 using KAMI.Core.Games;
 using KAMI.Core.Utilities;
+#if Windows
 using KAMI.Core.Windows;
+#endif
 using System;
+using System.IO;
 using System.Threading;
 
 namespace KAMI.Core
@@ -53,14 +56,30 @@ namespace KAMI.Core
         }
 
 #elif Linux
-        public KAMICore()
+        public KAMICore(Action<Exception> exceptionCallback, string configPath = null)
         {
-            m_config = new ConfigManager<KamiConfig>("~/.config/rpcs3/config.json");
-            m_ipc = PineIPC.NewRpcs3();
-            m_mouseHandler = new MouseHandler();
+            if (configPath == null)
+            {
+                string configDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "kami");
+                Directory.CreateDirectory(configDir);
+                configPath = Path.Combine(configDir, "config.json");
+            }
+            else
+            {
+                string dir = Path.GetDirectoryName(Path.GetFullPath(configPath));
+                if (!string.IsNullOrEmpty(dir))
+                    Directory.CreateDirectory(dir);
+            }
+            m_configManager = new ConfigManager<KamiConfig>(configPath);
+            m_gameManager = new GameManager();
             m_keyHandler = new KeyHandler();
             m_keyHandler.OnKeyPress += (object sender) => ToggleInjector();
             m_thread = new Thread(UpdateFunction);
+            m_exceptionCallback = exceptionCallback;
+            ReloadConfig();
+            m_ipc = Config.UsePCSX2 ? PineIPC.NewPcsx2() : PineIPC.NewRpcs3();
         }
 #endif
 
@@ -80,11 +99,14 @@ namespace KAMI.Core
                 PineIPC.DeleteRpcs3(m_ipc);
             }
 
+#if Windows
             if (Config.HideCursor)
             {
                 MouseCursor.ShowCursor();
             }
+#endif
             m_mouseHandler.ReleaseCursor();
+            (m_mouseHandler as IDisposable)?.Dispose();
             m_keyHandler.Dispose();
             m_closing = true;
             m_thread.Join();
@@ -174,7 +196,11 @@ namespace KAMI.Core
             m_closing = false;
             if (started)
             {
+#if Windows
                 m_keyHandler = new KeyHandler(windowHandle, addHookAction);
+#elif Linux
+                m_keyHandler = new KeyHandler();
+#endif
                 m_keyHandler.OnKeyPress += (object sender) => ToggleInjector();
                 Start();
             }
@@ -191,6 +217,7 @@ namespace KAMI.Core
                     m_game.InjectionStart();
                     m_mouseHandler.GetCenterDiff();
                     m_mouseHandler.ConfineCursor();
+#if Windows
                     if (Config.HideCursor)
                     {
                         MouseCursor.HideCursor();
@@ -199,6 +226,7 @@ namespace KAMI.Core
                 else if (Config.HideCursor)
                 {
                     MouseCursor.ShowCursor();
+#endif
                 }
                 m_keyHandler.SetEnableMouseHook(Injecting);
             }

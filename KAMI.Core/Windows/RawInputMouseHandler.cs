@@ -1,4 +1,5 @@
-﻿using System;
+#if Windows
+using System;
 using System.Runtime.InteropServices;
 
 namespace KAMI.Core.Windows
@@ -106,40 +107,40 @@ namespace KAMI.Core.Windows
         public struct RAWMOUSE
         {
             /// <summary>
-                    /// The mouse state.
-                    /// </summary>
+                    /// The mouse state.
+                    /// </summary>
             [FieldOffset(0)]
             public RawMouseFlags Flags;
             /// <summary>
-                    /// Flags for the event.
-                    /// </summary>
+                    /// Flags for the event.
+                    /// </summary>
             [FieldOffset(4)]
             public RawMouseButtons ButtonFlags;
             /// <summary>
-                    /// If the mouse wheel is moved, this will contain the delta amount.
-                    /// </summary>
+                    /// If the mouse wheel is moved, this will contain the delta amount.
+                    /// </summary>
             [FieldOffset(6)]
             public ushort ButtonData;
             /// <summary>
-                    /// Raw button data.
-                    /// </summary>
+                    /// Raw button data.
+                    /// </summary>
             [FieldOffset(8)]
             public uint RawButtons;
             /// <summary>
-                    /// The motion in the X direction. This is signed relative motion or
-                    /// absolute motion, depending on the value of usFlags.
-                    /// </summary>
+                    /// The motion in the X direction. This is signed relative motion or
+                    /// absolute motion, depending on the value of usFlags.
+                    /// </summary>
             [FieldOffset(12)]
             public int LastX;
             /// <summary>
-                    /// The motion in the Y direction. This is signed relative motion or absolute motion,
-                    /// depending on the value of usFlags.
-                    /// </summary>
+                    /// The motion in the Y direction. This is signed relative motion or absolute motion,
+                    /// depending on the value of usFlags.
+                    /// </summary>
             [FieldOffset(16)]
             public int LastY;
             /// <summary>
-                    /// The device-specific additional information for the event.
-                    /// </summary>
+                    /// The device-specific additional information for the event.
+                    /// </summary>
             [FieldOffset(20)]
             public uint ExtraInformation;
         }
@@ -207,7 +208,7 @@ namespace KAMI.Core.Windows
             CaptureMouse = 0x00000200,
             /// <summary>If set, the application-defined keyboard device hotkeys are not handled. However, the system hotkeys; for example, ALT+TAB and CTRL+ALT+DEL, are still handled. By default, all keyboard hotkeys are handled. NoHotKeys can be specified even if NoLegacy is not specified and WindowHandle is NULL.</summary>
             NoHotKeys = 0x00000200,
-            /// <summary>If set, application keys are handled.  NoLegacy must be specified.  Keyboard only.</summary>
+            /// <summary>If set, application keys are handled.  NoLegacy must be specified.  Keyboard only.</summary>
             AppKeys = 0x00000400
         }
 
@@ -218,3 +219,4 @@ namespace KAMI.Core.Windows
         }
     }
 }
+#endif
